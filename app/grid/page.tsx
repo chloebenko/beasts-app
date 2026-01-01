@@ -179,9 +179,19 @@ export default function GridPage() {
     });
 
     if (error) {
-        setStatus(error.message);
+        const msg = (error as any).message ?? "";
+
+        if (msg.includes("duplicate key value violates unique constraint")) {
+            const when =
+            cadence === "daily" ? "today" : cadence === "weekly" ? "this week" : "this month";
+            setStatus(`You already logged it ${when}!`);
+            return;
+        }
+
+        setStatus(msg || "Something went wrong.");
         return;
     }
+
 
     // Refresh totals just for the habits on screen
     const habitIds = habits.map((h) => h.id);
