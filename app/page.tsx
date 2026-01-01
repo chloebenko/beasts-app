@@ -78,7 +78,7 @@ export default function Home() {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
+        emailRedirectTo: `${window.location.origin}/onboarding`,
       },
     });
 
@@ -123,7 +123,7 @@ export default function Home() {
               placeholder="you@example.com"
               style={{ width: "100%", padding: 10, marginBottom: 12 }}
             />
-            <button onClick={signInWithEmail} disabled={!email}>
+            <button onClick={signInWithEmail} disabled={!email} style={{border: "1px solid #ddd", borderRadius: 10}}>
               Send magic link
             </button>
           </>
