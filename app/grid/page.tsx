@@ -1,8 +1,41 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
+
+// HELPERS
+
+function formatDateYYYYMMDD(d: Date) {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+// Monday-start week (more natural for Europe/Paris)
+function getPeriodDate(cadence: "daily" | "weekly" | "monthly") {
+  const now = new Date();
+
+  if (cadence === "daily") {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return formatDateYYYYMMDD(d);
+  }
+
+  if (cadence === "weekly") {
+    const day = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+    const diffToMonday = (day + 6) % 7; // 0 if Monday, 6 if Sunday
+    const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diffToMonday);
+    return formatDateYYYYMMDD(monday);
+  }
+
+  // monthly
+  const first = new Date(now.getFullYear(), now.getMonth(), 1);
+  return formatDateYYYYMMDD(first);
+}
+
+// --------------------------------------------------------------
 
 type HabitRow = {
   id: string;
@@ -26,6 +59,8 @@ export default function GridPage() {
   const [habits, setHabits] = useState<HabitRow[]>([]);
   const [totalsByHabitId, setTotalsByHabitId] = useState<Record<string, number>>({});
   const [profileNames, setProfileNames] = useState<Record<string, string>>({});
+  const [userId, setUserId] = useState<string | null>(null);
+
 
   useEffect(() => {
     let isMounted = true;
@@ -47,6 +82,8 @@ export default function GridPage() {
       if (!userData.user) {
         router.push("/");
         return;
+      } else {
+        setUserId(userData.user.id);
       }
 
       // 1) Fetch public habits
@@ -131,6 +168,44 @@ export default function GridPage() {
     };
   }, [router]);
 
+  async function handleDidIt(habitId: string, cadence: "daily" | "weekly" | "monthly") {
+    setStatus("");
+
+    const period_date = getPeriodDate(cadence);
+
+    const { error } = await supabase.from("habit_logs").insert({
+        habit_id: habitId,
+        period_date,
+    });
+
+    if (error) {
+        setStatus(error.message);
+        return;
+    }
+
+    // Refresh totals just for the habits on screen
+    const habitIds = habits.map((h) => h.id);
+    if (habitIds.length === 0) return;
+
+    const { data: totalsData, error: totalsError } = await supabase
+        .from("habit_totals")
+        .select("habit_id,total_periods_done")
+        .in("habit_id", habitIds);
+
+    if (totalsError) {
+        setStatus(totalsError.message);
+        return;
+    }
+
+    const map: Record<string, number> = {};
+    (totalsData ?? []).forEach((row: any) => {
+        map[row.habit_id] = row.total_periods_done;
+    });
+
+    setTotalsByHabitId(map);
+    }
+
+
   // Grid layout logic:
   // - 1 user => 1 column
   // - 2 users => 2 columns
@@ -161,10 +236,27 @@ export default function GridPage() {
 
   return (
     <main style={{ padding: 24 }}>
-      <h1 style={{ fontSize: 28, fontWeight: 700 }}>Beasts Grid</h1>
-      <p style={{ marginTop: 8, opacity: 0.8 }}>
-        Public goals: {habits.length} • Layout: {columns}×{columns}
-      </p>
+    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+        <div>
+            <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>The Shining Stars 😄</h1>
+        </div>
+
+        <Link
+            href="/profile"
+            style={{
+            border: "1px solid #ddd",
+            padding: "10px 12px",
+            borderRadius: 10,
+            textDecoration: "none",
+            color: "inherit",
+            fontWeight: 600,
+            marginTop: 0, // aligns top with the h1
+            }}
+        >
+            Profile
+        </Link>
+    </div>
+
 
       {status && <p style={{ marginTop: 12 }}>{status}</p>}
 
@@ -182,6 +274,7 @@ export default function GridPage() {
           const total = totalsByHabitId[h.id] ?? 0;
           const cadenceLabel =
             h.cadence === "daily" ? "days" : h.cadence === "weekly" ? "weeks" : "months";
+            const cadenceDidIt = h.cadence === "daily" ? "today" : h.cadence === "weekly" ? "this week" : "this month";
 
           return (
             <div
@@ -197,17 +290,49 @@ export default function GridPage() {
             >
               <div style={{ fontSize: 18, fontWeight: 700 }}>{name}</div>
 
-              <div style={{ marginTop: 6, opacity: 0.8 }}>
+              <div style={{ fontSize: 18, marginTop: 6, opacity: 0.8 }}>
                 Goal: <strong>{h.title}</strong> ({h.cadence})
               </div>
 
-              <div style={{ marginTop: 10, fontSize: 22 }}>
-                {h.progress_emoji}{" "}
-                <span style={{ fontSize: 14, opacity: 0.8 }}>
+              <div style={{ fontSize: 18 }}>
+                <span style={{ opacity: 0.8 }}>
                   Total {cadenceLabel}:{" "}
                 </span>
-                <strong style={{ fontSize: 18 }}>{total}</strong>
+                <strong>{total}</strong>
               </div>
+
+              {userId === h.user_id && (
+                <button
+                    onClick={() => handleDidIt(h.id, h.cadence)}
+                    style={{
+                    marginTop: 12,
+                    padding: "8px 12px",
+                    borderRadius: 10,
+                    border: "1px solid #ddd",
+                    background: "transparent",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    }}
+                >
+                    I did it {cadenceDidIt}! 🥳
+                </button>
+            )}
+
+            <div
+                style={{
+                    marginTop: 10,
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 6,
+                    lineHeight: 1,
+                }}
+                >
+                {Array.from({ length: total }).map((_, i) => (
+                    <span key={i} style={{ fontSize: 20 }}>
+                    {h.progress_emoji}
+                    </span>
+                ))}
+            </div>
             </div>
           );
         })}

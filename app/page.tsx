@@ -36,12 +36,6 @@ export default function Home() {
       return;
     }
 
-    // Ensure a profile exists (so your grid can show names later)
-    await supabase.from("profiles").upsert({
-      id: user.id,
-      display_name: user.email?.split("@")[0] ?? null,
-    });
-
     // Check if this user already has at least one habit
     const { data: habits, error: habitsError } = await supabase
       .from("habits")
@@ -99,25 +93,6 @@ export default function Home() {
     else setStatus("Signed out.");
   }
 
-  async function ensureProfile() {
-    setStatus("");
-    const { data: userData } = await supabase.auth.getUser();
-    const user = userData.user;
-    if (!user) {
-      setStatus("Not signed in.");
-      return;
-    }
-
-    // Create or update a profile row (emoji default can be set in DB)
-    const { error } = await supabase.from("profiles").upsert({
-      id: user.id,
-      display_name: user.email?.split("@")[0] ?? null,
-    });
-
-    if (error) setStatus(error.message);
-    else setStatus("Profile ready ✅");
-  }
-
   return (
     <main style={{ padding: 24, maxWidth: 520 }}>
       <h1 style={{ fontSize: 28, fontWeight: 700 }}>Welcome to the Beasts app! ✨😎✨</h1>
@@ -136,7 +111,6 @@ export default function Home() {
             </p>
 
             <div style={{ display: "flex", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
-              <button onClick={ensureProfile}>Create/Update Profile</button>
               <button onClick={signOut}>Sign out</button>
             </div>
           </>

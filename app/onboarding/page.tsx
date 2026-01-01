@@ -42,21 +42,9 @@ export default function OnboardingPage() {
 
       setUserId(user.id);
 
-      // Default display name from email (user can edit it here)
-      const defaultName = user.email?.split("@")[0] ?? "";
-      setDisplayName(defaultName);
-
-      // Ensure profile exists
-      const { error: profileError } = await supabase.from("profiles").upsert({
-        id: user.id,
-        display_name: defaultName,
-      });
+      setDisplayName("");
 
       if (!isMounted) return;
-
-      if (profileError) {
-        setStatus(profileError.message);
-      }
 
       setLoading(false);
     }
@@ -72,8 +60,13 @@ export default function OnboardingPage() {
     setStatus("");
 
     if (!userId) {
-      setStatus("Not signed in.");
-      return;
+        setStatus("Not signed in.");
+        return;
+    }
+
+    if (!displayName.trim()) {
+        setStatus("Please enter your name 🙂");
+        return;
     }
 
     if (!title.trim()) {
@@ -86,11 +79,11 @@ export default function OnboardingPage() {
       return;
     }
 
-    // Save display name (in case they changed it)
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .update({ display_name: displayName.trim() })
-      .eq("id", userId);
+    // Save display name
+    const { error: profileError } = await supabase.from("profiles").upsert({
+        id: userId,
+        display_name: displayName.trim(),
+    });
 
     if (profileError) {
       setStatus(profileError.message);
