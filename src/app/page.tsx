@@ -123,7 +123,14 @@ export default function Home() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              style={{ width: "100%", padding: 10, marginBottom: 12 }}
+              style={{
+                width: "100%",
+                padding: 10,
+                marginBottom: 12,
+                border: "1px solid #000",   // black border
+                borderRadius: 8,            // optional, feels nicer
+                outline: "none",            // removes default blue glow
+              }}
             />
             
             <ActionButton
