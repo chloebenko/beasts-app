@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
+import ActionButton from "../components/ActionButton";
 
 type Cadence = "daily" | "weekly" | "monthly";
 
@@ -127,31 +128,39 @@ export default function OnboardingPage() {
 
       <div style={{ display: "grid", gap: 14 }}>
         <div>
-          <label style={{ display: "block", marginBottom: 6 }}>Your name</label>
+          <label style={{ display: "block", marginBottom: 6 }}>Your name:</label>
           <input
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="Chloe"
-            style={{ width: "100%", padding: 10 }}
+            placeholder="Type your name here"
+            onFocus={(e) => (e.target.placeholder = "")}
+            onBlur={(e) => {
+              if (!displayName) e.target.placeholder = "Type your name here";
+            }}
+            style={{ width: "100%", padding: 10, border: "1px solid #000", borderRadius: 8}}
           />
         </div>
 
         <div>
-          <label style={{ display: "block", marginBottom: 6 }}>Goal name</label>
+          <label style={{ display: "block", marginBottom: 6 }}>Goal name:</label>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Yoga"
-            style={{ width: "100%", padding: 10 }}
+            placeholder="Type your goal, ex: Yoga, Breathwork"
+            onFocus={(e) => (e.target.placeholder = "")}
+            onBlur={(e) => {
+              if (!title) e.target.placeholder = "Type your goal, ex: Yoga, Breathwork";
+            }}
+            style={{ width: "100%", padding: 10, border: "1px solid #000", borderRadius: 8 }}
           />
         </div>
 
         <div>
-          <label style={{ display: "block", marginBottom: 6 }}>Cadence</label>
+          <label style={{ display: "block", marginBottom: 6 }}>Frequency:</label>
           <select
             value={cadence}
             onChange={(e) => setCadence(e.target.value as Cadence)}
-            style={{ width: "100%", padding: 10 }}
+            style={{ width: "100%", padding: 10, border: "1px solid #000", borderRadius: 8 }}
           >
             <option value="daily">Daily</option>
             <option value="weekly">Weekly</option>
@@ -160,21 +169,27 @@ export default function OnboardingPage() {
         </div>
 
         <div>
-          <label style={{ display: "block", marginBottom: 6 }}>Progress emoji</label>
+          <label style={{ display: "block", marginBottom: 6 }}>Progress emoji:</label>
+          <p style={{ marginBottom: 10, opacity: 0.7 }}>
+            Choose one emoji you love. We’ll use it to stamp your progress.
+          </p>
           <input
             value={emoji}
             onChange={(e) => setEmoji(e.target.value)}
             placeholder="🧘"
-            style={{ width: "100%", padding: 10, maxWidth: 160 }}
+            onFocus={(e) => (e.target.placeholder = "")}
+            onBlur={(e) => {
+              if (!emoji) e.target.placeholder = "🧘";
+            }}
+            style={{ width: "100%", padding: 10, maxWidth: 80, border: "1px solid #000", borderRadius: 8 }}
           />
-          <p style={{ marginTop: 6, opacity: 0.7 }}>
-            Choose any emoji. We’ll use it to stamp your progress.
-          </p>
         </div>
 
-        <button onClick={createGoal} style={{ padding: "10px 14px" }}>
-          Create my goal →
-        </button>
+        <ActionButton
+          onClick={createGoal}
+          text="Create my goal →"
+          clickedText="Goal created!"
+        />
 
         {status && <p style={{ marginTop: 8 }}>{status}</p>}
       </div>
