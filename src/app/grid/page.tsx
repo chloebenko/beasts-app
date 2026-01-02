@@ -215,25 +215,6 @@ export default function GridPage() {
     setTotalsByHabitId(map);
     }
 
-
-  // Grid layout logic:
-  // - 1 user => 1 column
-  // - 2 users => 2 columns
-  // - 3+ => near-square grid (2x2, 3x3, 4x4, ...)
-  const columns = useMemo(() => {
-    const n = habits.length;
-    if (n <= 2) return Math.max(1, n);
-    return Math.ceil(Math.sqrt(n));
-  }, [habits.length]);
-
-  // Fill empty tiles to complete a square
-  const tiles = useMemo(() => {
-    const n = habits.length;
-    const totalSlots = columns * columns;
-    const empties = Math.max(0, totalSlots - n);
-    return { empties, totalSlots };
-  }, [habits.length, columns]);
-
   if (loading) {
     return (
       <main style={{ padding: 24 }}>
@@ -274,7 +255,7 @@ export default function GridPage() {
         style={{
           marginTop: 18,
           display: "grid",
-          gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
           gap: 14,
           minHeight: "60vh",
         }}
@@ -346,24 +327,7 @@ export default function GridPage() {
             </div>
           );
         })}
-
-        {Array.from({ length: tiles.empties }).map((_, idx) => (
-          <div
-            key={`empty-${idx}`}
-            style={{
-              border: "1px dashed #ddd",
-              borderRadius: 12,
-              minHeight: 160,
-              opacity: 0.6,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 14,
-            }}
-          >
-            Empty slot
-          </div>
-        ))}
+        
       </div>
     </main>
   );
