@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
+import ActionButton from "../components/ActionButton";
 
 type HabitRow = {
   id: string;
@@ -191,6 +192,18 @@ export default function ProfilePage() {
         router.push("/");
     }
 
+    async function logout() {
+      setStatus("");
+
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        setStatus(error.message);
+        return;
+      }
+
+      router.push("/");
+    }
+
   if (loading) {
     return (
       <main style={{ padding: 24, maxWidth: 700 }}>
@@ -278,22 +291,32 @@ export default function ProfilePage() {
           )}
         </div>
 
-        <button onClick={saveAll} style={{ padding: "10px 14px", fontWeight: 700, border: "1px solid #ddd", borderRadius: 10, background: "transparent"}}>
-          Save changes
-        </button>
+        <ActionButton
+          onClick={saveAll}
+          text="Save changes"
+          clickedText="Changes saved!"
+          style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 700 }}
+        />
 
-        <button
-            onClick={() => setShowDeleteConfirm(true)}
-            style={{
-                padding: "10px 14px",
-                fontWeight: 700,
-                border: "1px solid #ddd",
-                borderRadius: 10,
-                background: "transparent",
-            }}
-            >
-            Delete profile
-        </button>
+        <ActionButton
+          onClick={logout}
+          text="Log out"
+          clickedText="Logging out!"
+          textColor="#000"
+          borderColor="#000"
+          clickedBackgroundColor="#e2e2e2ff"
+          style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 700 }}
+        />
+
+        <ActionButton
+          onClick={() => setShowDeleteConfirm(true)}
+          text="Delete profile"
+          clickedText="Deleting profile!"
+          textColor="#620000ff"
+          borderColor="#620000ff"
+          clickedBackgroundColor="#ffdedeff"
+          style={{ padding: "10px 14px", borderRadius: 10, fontWeight: 700 }}
+        />
 
         {status && <p style={{ marginTop: 6 }}>{status}</p>}
       </div>
