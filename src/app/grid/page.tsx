@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "../../lib/supabaseClient";
+import { supabase } from "../../../lib/supabaseClient";
 
 // HELPERS
 
@@ -248,7 +248,7 @@ export default function GridPage() {
     <main style={{ padding: 24 }}>
     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
         <div>
-            <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>The Shining Stars 😄</h1>
+            <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>The Shining Stars</h1>
         </div>
 
         <Link

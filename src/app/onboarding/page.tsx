@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "../../lib/supabaseClient";
+import { supabase } from "../../../lib/supabaseClient";
 
 type Cadence = "daily" | "weekly" | "monthly";
 
@@ -168,7 +168,7 @@ export default function OnboardingPage() {
             style={{ width: "100%", padding: 10, maxWidth: 160 }}
           />
           <p style={{ marginTop: 6, opacity: 0.7 }}>
-            Tip: paste any emoji. We’ll use it to stamp your grid.
+            Choose any emoji. We’ll use it to stamp your progress.
           </p>
         </div>
 

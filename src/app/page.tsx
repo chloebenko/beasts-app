@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { supabase } from "../../lib/supabaseClient";
 import { useRouter } from "next/navigation";
+
+import ActionButton from "./components/ActionButton";
 
 
 export default function Home() {
@@ -95,7 +97,7 @@ export default function Home() {
 
   return (
     <main style={{ padding: 24, maxWidth: 520 }}>
-      <h1 style={{ fontSize: 28, fontWeight: 700 }}>Welcome to the Beasts app! ✨😎✨</h1>
+      <h1 style={{ fontSize: 28, fontWeight: 700 }}>Let's rise & shine! ✨</h1>
       <p style={{ marginTop: 8, opacity: 0.8 }}>
         Simple login first. Next we’ll add your icon + emoji to keep track of your habits and celebrate every time you show up for yourself! 💖
       </p>
@@ -123,9 +125,13 @@ export default function Home() {
               placeholder="you@example.com"
               style={{ width: "100%", padding: 10, marginBottom: 12 }}
             />
-            <button onClick={signInWithEmail} disabled={!email} style={{border: "1px solid #ddd", borderRadius: 10}}>
-              Send magic link
-            </button>
+            
+            <ActionButton
+              onClick={signInWithEmail}
+              text="Send magic link"
+              clickedText="Magic link sent!"
+              disabled={!email}
+            />
           </>
         )
       )}
