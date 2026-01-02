@@ -192,7 +192,6 @@ export default function GridPage() {
         return;
     }
 
-
     // Refresh totals just for the habits on screen
     const habitIds = habits.map((h) => h.id);
     if (habitIds.length === 0) return;
@@ -213,7 +212,33 @@ export default function GridPage() {
     });
 
     setTotalsByHabitId(map);
-    }
+  }
+
+   const sortedHabits = useMemo(() => {
+    const collator = new Intl.Collator(undefined, { sensitivity: "base" });
+
+    const getName = (h: HabitRow) => (profileNames[h.user_id] ?? "").trim();
+    const getTitle = (h: HabitRow) => (h.title ?? "").trim();
+
+    return [...habits].sort((a, b) => {
+      const aMine = a.user_id === userId;
+      const bMine = b.user_id === userId;
+
+      // 1) User's tiles first
+      if (aMine !== bMine) return aMine ? -1 : 1;
+
+      // 2) Others (and user's) ordered by display name
+      const nameCmp = collator.compare(getName(a), getName(b));
+      if (nameCmp !== 0) return nameCmp;
+
+      // 3) Tie-breaker: goal title
+      const titleCmp = collator.compare(getTitle(a), getTitle(b));
+      if (titleCmp !== 0) return titleCmp;
+
+      // 4) Final tie-breaker: stable sort
+      return (a.id ?? "").localeCompare(b.id ?? "");
+    });
+  }, [habits, profileNames, userId]);
 
   if (loading) {
     return (
@@ -260,7 +285,7 @@ export default function GridPage() {
           minHeight: "60vh",
         }}
       >
-        {habits.map((h) => {
+        {sortedHabits.map((h) => {
           const name = profileNames[h.user_id] || "Someone";
           const total = totalsByHabitId[h.id] ?? 0;
           const cadenceLabel =
@@ -327,7 +352,7 @@ export default function GridPage() {
             </div>
           );
         })}
-        
+
       </div>
     </main>
   );
