@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { useRouter } from "next/navigation";
 
-import ActionButton from "./components/ActionButton";
+import ActionButton from "../components/ActionButton";
 
 
 export default function Home() {
@@ -15,64 +15,60 @@ export default function Home() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
-  let isMounted = true;
+    let isMounted = true;
 
-  async function loadAndRoute() {
-    setStatus("");
-    const { data, error } = await supabase.auth.getUser();
+    async function loadAndRoute() {
+      setStatus("");
 
-    if (!isMounted) return;
+      // More reliable for "do we have a session right now?"
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (!isMounted) return;
 
-    if (error) {
-      setStatus(error.message);
-      setLoading(false);
-      return;
+      if (sessionError) {
+        setStatus(sessionError.message);
+        setLoading(false);
+        return;
+      }
+
+      const user = sessionData.session?.user;
+      setUserEmail(user?.email ?? null);
+
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      const { data: habits, error: habitsError } = await supabase
+        .from("habits")
+        .select("id")
+        .eq("user_id", user.id)
+        .limit(1);
+
+      if (!isMounted) return;
+
+      if (habitsError) {
+        setStatus(habitsError.message);
+        setLoading(false);
+        return;
+      }
+
+      // Use replace so back button doesn't bounce
+      router.replace(habits && habits.length > 0 ? "/grid" : "/onboarding");
     }
 
-    const user = data.user;
-    setUserEmail(user?.email ?? null);
-
-    // If not signed in, just show the login UI
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
-    // Check if this user already has at least one habit
-    const { data: habits, error: habitsError } = await supabase
-      .from("habits")
-      .select("id")
-      .eq("user_id", user.id)
-      .limit(1);
-
-    if (!isMounted) return;
-
-    if (habitsError) {
-      setStatus(habitsError.message);
-      setLoading(false);
-      return;
-    }
-
-    // Route based on whether they have a habit yet
-    if (!habits || habits.length === 0) {
-      router.push("/onboarding");
-    } else {
-      router.push("/grid");
-    }
-  }
-
-  loadAndRoute();
-
-  // Also listen for auth changes (e.g., magic link just completed)
-  const { data: subscription } = supabase.auth.onAuthStateChange(() => {
     loadAndRoute();
-  });
 
-  return () => {
-    isMounted = false;
-    subscription.subscription.unsubscribe();
-  };
+    // Only re-run routing when auth actually changes
+    const { data: sub } = supabase.auth.onAuthStateChange((_event) => {
+      loadAndRoute();
+    });
+
+    return () => {
+      isMounted = false;
+      sub.subscription.unsubscribe();
+    };
   }, [router]);
+
 
 
   async function signInWithEmail() {
@@ -80,7 +76,7 @@ export default function Home() {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/onboarding`,
+        emailRedirectTo: `${window.location.origin}/`,
       },
     });
 

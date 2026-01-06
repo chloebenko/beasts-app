@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
-import ActionButton from "../components/ActionButton";
+import ActionButton from "../../components/ActionButton";
 
 type Cadence = "daily" | "weekly" | "monthly";
 
@@ -21,41 +21,66 @@ export default function OnboardingPage() {
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    let isMounted = true;
+  let isMounted = true;
 
-    async function init() {
-      setStatus("");
+  async function routeIfReady() {
+    setStatus("");
 
-      const { data, error } = await supabase.auth.getUser();
-      if (!isMounted) return;
+    // getSession is usually better here than getUser for timing
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (!isMounted) return;
 
-      if (error) {
-        setStatus(error.message);
-        setLoading(false);
-        return;
-      }
-
-      const user = data.user;
-      if (!user) {
-        router.push("/"); // goes back to login page
-        return;
-      }
-
-      setUserId(user.id);
-
-      setDisplayName("");
-
-      if (!isMounted) return;
-
+    if (sessionError) {
+      setStatus(sessionError.message);
       setLoading(false);
+      return;
     }
 
-    init();
+    const user = sessionData.session?.user;
+    if (!user) {
+      setLoading(false);
+      return; // stay on onboarding; or router.replace("/") if you want
+    }
 
-    return () => {
-      isMounted = false;
-    };
-  }, [router]);
+    setUserId(user.id);
+
+    // check if they already have a habit
+    const { data: habits, error: habitsError } = await supabase
+      .from("habits")
+      .select("id")
+      .eq("user_id", user.id)
+      .limit(1);
+
+    if (!isMounted) return;
+
+    if (habitsError) {
+      setStatus(habitsError.message);
+      setLoading(false);
+      return;
+    }
+
+    // If they already have a habit, they should NOT be here
+    if (habits && habits.length > 0) {
+      router.replace("/grid");
+      return;
+    }
+
+    setLoading(false);
+  }
+
+  routeIfReady();
+
+  // ✅ React when magic-link session arrives a moment later
+  const { data: sub } = supabase.auth.onAuthStateChange(() => {
+    routeIfReady();
+  });
+
+  return () => {
+    isMounted = false;
+    sub.subscription.unsubscribe();
+  };
+}, [router]);
+
 
   async function createGoal() {
     setStatus("");

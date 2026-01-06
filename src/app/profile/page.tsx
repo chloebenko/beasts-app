@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
-import ActionButton from "../components/ActionButton";
+import ActionButton from "../../components/ActionButton";
 
 type HabitRow = {
   id: string;
@@ -48,7 +48,7 @@ export default function ProfilePage() {
 
       const user = userData.user;
       if (!user) {
-        router.push("/");
+        router.replace("/");
         return;
       }
 
@@ -189,7 +189,7 @@ export default function ProfilePage() {
         // Sign out locally so user doesn't stay "logged in" to a now-deleted profile
         await supabase.auth.signOut();
 
-        router.push("/");
+        router.replace("/");
     }
 
     async function logout() {
@@ -201,7 +201,7 @@ export default function ProfilePage() {
         return;
       }
 
-      router.push("/");
+      router.replace("/");
     }
 
   if (loading) {

@@ -80,7 +80,7 @@ export default function GridPage() {
       }
 
       if (!userData.user) {
-        router.push("/");
+        router.replace("/");
         return;
       } else {
         setUserId(userData.user.id);
