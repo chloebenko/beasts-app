@@ -64,11 +64,9 @@ export default function GridPage() {
 
   // redirect user to home page if not signed in
   const { loading: loading_auth } = useRequireAuth();
-  if (loading_auth) {
-    return <div />; // or spinner
-  }
 
   useEffect(() => {
+    if (loading_auth) return;
     let isMounted = true;
 
     async function loadGrid() {

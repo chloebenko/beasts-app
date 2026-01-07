@@ -31,12 +31,12 @@ export default function ProfilePage() {
 
   // redirect user to home page if not signed in
   const { loading: loading_auth } = useRequireAuth();
-  if (loading_auth) {
-    return <div />; // or spinner
-  }
-
+  
   useEffect(() => {
     let isMounted = true;
+    if (loading_auth) {
+      return;
+    }
 
     async function loadProfile() {
       setStatus("");
