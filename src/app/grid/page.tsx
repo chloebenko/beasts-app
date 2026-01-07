@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
+import { useRequireAuth } from "../../hooks/useRequireAuth";
 
 // HELPERS
 
@@ -61,6 +62,11 @@ export default function GridPage() {
   const [profileNames, setProfileNames] = useState<Record<string, string>>({});
   const [userId, setUserId] = useState<string | null>(null);
 
+  // redirect user to home page if not signed in
+  const { loading: loading_auth } = useRequireAuth();
+  if (loading_auth) {
+    return <div />; // or spinner
+  }
 
   useEffect(() => {
     let isMounted = true;

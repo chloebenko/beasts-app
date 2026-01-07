@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
 import ActionButton from "../../components/ActionButton";
+import { useRequireAuth } from "@/src/hooks/useRequireAuth";
 
 type Cadence = "daily" | "weekly" | "monthly";
 
@@ -19,6 +20,12 @@ export default function OnboardingPage() {
   const [emoji, setEmoji] = useState("🧘");
 
   const [userId, setUserId] = useState<string | null>(null);
+
+  // redirect user to home page if not signed in
+    const { loading: loading_auth } = useRequireAuth();
+    if (loading_auth) {
+      return <div />; // or spinner
+    }
 
   useEffect(() => {
   let isMounted = true;
