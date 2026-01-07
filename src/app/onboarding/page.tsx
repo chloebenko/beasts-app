@@ -22,82 +22,91 @@ export default function OnboardingPage() {
   const [userId, setUserId] = useState<string | null>(null);
 
   // redirect user to home page if not signed in
-  const { loading: loading_auth } = useRequireAuth();
+  const { loading: authLoading } = useRequireAuth();
 
   useEffect(() => {
-    if (loading_auth) return;
-  let isMounted = true;
+    if (authLoading) return;
 
-  async function routeIfReady() {
-    setStatus("");
+    let cancelled = false;
 
-    // getSession is usually better here than getUser for timing
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-    if (!isMounted) return;
+    async function routeIfReady() {
+      try {
+        setStatus("");
 
-    if (sessionError) {
-      setStatus(sessionError.message);
-      setLoading(false);
-      return;
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (cancelled) return;
+
+        if (sessionError) {
+          setStatus(sessionError.message);
+          setLoading(false);
+          return;
+        }
+
+        const user = sessionData.session?.user;
+        if (!user) {
+          // useRequireAuth should redirect, but just in case:
+          router.replace("/");
+          return;
+        }
+
+        setUserId(user.id);
+
+        // check if they already have a habit
+        const { data: habits, error: habitsError } = await supabase
+          .from("habits")
+          .select("id")
+          .eq("user_id", user.id)
+          .limit(1);
+
+        if (cancelled) return;
+
+        if (habitsError) {
+          setStatus(habitsError.message);
+          setLoading(false);
+          return;
+        }
+
+        // If they already have a habit, they should NOT be here
+        if (habits && habits.length > 0) {
+          router.replace("/grid");
+          return;
+        }
+
+        setLoading(false);
+      } catch (e: any) {
+        if (cancelled) return;
+        setStatus(e?.message ?? "Something went wrong.");
+        setLoading(false);
+      }
     }
 
-    const user = sessionData.session?.user;
-    if (!user) {
-      setLoading(false);
-      return; // stay on onboarding; or router.replace("/") if you want
-    }
-
-    setUserId(user.id);
-
-    // check if they already have a habit
-    const { data: habits, error: habitsError } = await supabase
-      .from("habits")
-      .select("id")
-      .eq("user_id", user.id)
-      .limit(1);
-
-    if (!isMounted) return;
-
-    if (habitsError) {
-      setStatus(habitsError.message);
-      setLoading(false);
-      return;
-    }
-
-    // If they already have a habit, they should NOT be here
-    if (habits && habits.length > 0) {
-      router.replace("/grid");
-      return;
-    }
-
-    setLoading(false);
-  }
-
-  routeIfReady();
-
-  // ✅ React when magic-link session arrives a moment later
-  const { data: sub } = supabase.auth.onAuthStateChange(() => {
+    // initial check
     routeIfReady();
-  });
 
-  return () => {
-    isMounted = false;
-    sub.subscription.unsubscribe();
-  };
-}, [router]);
+    // react when magic-link session arrives a moment later
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      routeIfReady();
+    });
 
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, [authLoading, router]);
 
   async function createGoal() {
     setStatus("");
 
     if (!userId) {
-        setStatus("Not signed in.");
-        return;
+      setStatus("Not signed in.");
+      return;
     }
 
     if (!displayName.trim()) {
-        setStatus("Please enter your name 🙂");
-        return;
+      setStatus("Please enter your name 🙂");
+      return;
     }
 
     if (!title.trim()) {
@@ -112,8 +121,8 @@ export default function OnboardingPage() {
 
     // Save display name
     const { error: profileError } = await supabase.from("profiles").upsert({
-        id: userId,
-        display_name: displayName.trim(),
+      id: userId,
+      display_name: displayName.trim(),
     });
 
     if (profileError) {
@@ -135,7 +144,17 @@ export default function OnboardingPage() {
       return;
     }
 
-    router.push("/grid");
+    router.replace("/grid"); // replace is nicer here
+  }
+
+  // auth gate (safe: after hooks)
+  if (authLoading) {
+    return (
+      <main style={{ padding: 24, maxWidth: 640 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700 }}>Create your goal</h1>
+        <p style={{ marginTop: 8 }}>Checking session…</p>
+      </main>
+    );
   }
 
   if (loading) {
@@ -143,6 +162,7 @@ export default function OnboardingPage() {
       <main style={{ padding: 24, maxWidth: 640 }}>
         <h1 style={{ fontSize: 28, fontWeight: 700 }}>Create your goal</h1>
         <p style={{ marginTop: 8 }}>Loading…</p>
+        {status && <p style={{ marginTop: 12 }}>{status}</p>}
       </main>
     );
   }
@@ -150,9 +170,7 @@ export default function OnboardingPage() {
   return (
     <main style={{ padding: 24, maxWidth: 640 }}>
       <h1 style={{ fontSize: 28, fontWeight: 700 }}>Create your goal</h1>
-      <p style={{ marginTop: 8, opacity: 0.8 }}>
-        This sets up your tile on the main grid.
-      </p>
+      <p style={{ marginTop: 8, opacity: 0.8 }}>This sets up your tile on the main grid.</p>
 
       <hr style={{ margin: "20px 0" }} />
 
@@ -167,7 +185,7 @@ export default function OnboardingPage() {
             onBlur={(e) => {
               if (!displayName) e.target.placeholder = "Type your name here";
             }}
-            style={{ width: "100%", padding: 10, border: "1px solid #000", borderRadius: 8}}
+            style={{ width: "100%", padding: 10, border: "1px solid #000", borderRadius: 8 }}
           />
         </div>
 
@@ -215,11 +233,7 @@ export default function OnboardingPage() {
           />
         </div>
 
-        <ActionButton
-          onClick={createGoal}
-          text="Create my goal →"
-          clickedText="Goal created!"
-        />
+        <ActionButton onClick={createGoal} text="Create my goal →" clickedText="Goal created!" />
 
         {status && <p style={{ marginTop: 8 }}>{status}</p>}
       </div>

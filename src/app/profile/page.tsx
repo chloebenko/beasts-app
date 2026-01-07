@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
 import ActionButton from "../../components/ActionButton";
-import { useRequireAuth } from "@/src/hooks/useRequireAuth";
 
 type HabitRow = {
   id: string;
@@ -28,15 +27,9 @@ export default function ProfilePage() {
   const [titleByHabitId, setTitleByHabitId] = useState<Record<string, string>>({});
   const [emojiByHabitId, setEmojiByHabitId] = useState<Record<string, string>>({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
-  // redirect user to home page if not signed in
-  const { loading: loading_auth } = useRequireAuth();
   
   useEffect(() => {
     let isMounted = true;
-    if (loading_auth) {
-      return;
-    }
 
     async function loadProfile() {
       setStatus("");

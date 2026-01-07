@@ -7,7 +7,6 @@ import { supabase } from "../../../lib/supabaseClient";
 import { useRequireAuth } from "../../hooks/useRequireAuth";
 
 // HELPERS
-
 function formatDateYYYYMMDD(d: Date) {
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -63,114 +62,121 @@ export default function GridPage() {
   const [userId, setUserId] = useState<string | null>(null);
 
   // redirect user to home page if not signed in
-  const { loading: loading_auth } = useRequireAuth();
+  const { loading: authLoading } = useRequireAuth();
 
   useEffect(() => {
-    if (loading_auth) return;
-    let isMounted = true;
+    if (authLoading) return;
+
+    let cancelled = false;
 
     async function loadGrid() {
-      setStatus("");
-      setLoading(true);
+      try {
+        setStatus("");
+        setLoading(true);
 
-      // Require login for now (keeps it simple)
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      if (!isMounted) return;
+        // Require login for now (keeps it simple)
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (cancelled) return;
 
-      if (userError) {
-        setStatus(userError.message);
-        setLoading(false);
-        return;
-      }
-
-      if (!userData.user) {
-        router.replace("/");
-        return;
-      } else {
-        setUserId(userData.user.id);
-      }
-
-      // 1) Fetch public habits
-      const { data: habitData, error: habitsError } = await supabase
-        .from("habits")
-        .select("id,title,cadence,progress_emoji,background_path,user_id")
-        .eq("is_public", true)
-        .order("created_at", { ascending: true });
-
-      if (!isMounted) return;
-
-      if (habitsError) {
-        setStatus(habitsError.message);
-        setLoading(false);
-        return;
-      }
-
-      const safeHabits = (habitData ?? []) as HabitRow[];
-      setHabits(safeHabits);
-
-      // 2) Fetch profile display names for those habits
-      const userIds = Array.from(new Set(safeHabits.map((h) => h.user_id)));
-
-      if (userIds.length > 0) {
-        const { data: profileData, error: profilesError } = await supabase
-          .from("profiles")
-          .select("id,display_name")
-          .in("id", userIds);
-
-        if (!isMounted) return;
-
-        if (profilesError) {
-          setStatus(profilesError.message);
+        if (userError) {
+          setStatus(userError.message);
           setLoading(false);
           return;
         }
 
-        const profileNameById: Record<string, string> = {};
-        (profileData ?? []).forEach((p) => {
-          profileNameById[p.id] = p.display_name ?? "";
-        });
+        if (!userData.user) {
+          router.replace("/");
+          return;
+        } else {
+          setUserId(userData.user.id);
+        }
 
-        setProfileNames(profileNameById);
-      } else {
-        setProfileNames({});
-      }
+        // 1) Fetch public habits
+        const { data: habitData, error: habitsError } = await supabase
+          .from("habits")
+          .select("id,title,cadence,progress_emoji,background_path,user_id")
+          .eq("is_public", true)
+          .order("created_at", { ascending: true });
 
-      // 3) Fetch totals for those habits
-      const habitIds = safeHabits.map((h) => h.id);
+        if (cancelled) return;
 
-      if (habitIds.length > 0) {
-        const { data: totalsData, error: totalsError } = await supabase
-          .from("habit_totals")
-          .select("habit_id,total_periods_done")
-          .in("habit_id", habitIds);
-
-        if (!isMounted) return;
-
-        if (totalsError) {
-          setStatus(totalsError.message);
+        if (habitsError) {
+          setStatus(habitsError.message);
           setLoading(false);
           return;
         }
 
-        const map: Record<string, number> = {};
-        (totalsData as TotalRow[] | null)?.forEach((row) => {
-          map[row.habit_id] = row.total_periods_done;
-        });
+        const safeHabits = (habitData ?? []) as HabitRow[];
+        setHabits(safeHabits);
 
-        setTotalsByHabitId(map);
-      } else {
-        setTotalsByHabitId({});
+        // 2) Fetch profile display names for those habits
+        const userIds = Array.from(new Set(safeHabits.map((h) => h.user_id)));
+
+        if (userIds.length > 0) {
+          const { data: profileData, error: profilesError } = await supabase
+            .from("profiles")
+            .select("id,display_name")
+            .in("id", userIds);
+
+          if (cancelled) return;
+
+          if (profilesError) {
+            setStatus(profilesError.message);
+            setLoading(false);
+            return;
+          }
+
+          const profileNameById: Record<string, string> = {};
+          (profileData ?? []).forEach((p: any) => {
+            profileNameById[p.id] = p.display_name ?? "";
+          });
+
+          setProfileNames(profileNameById);
+        } else {
+          setProfileNames({});
+        }
+
+        // 3) Fetch totals for those habits
+        const habitIds = safeHabits.map((h) => h.id);
+
+        if (habitIds.length > 0) {
+          const { data: totalsData, error: totalsError } = await supabase
+            .from("habit_totals")
+            .select("habit_id,total_periods_done")
+            .in("habit_id", habitIds);
+
+          if (cancelled) return;
+
+          if (totalsError) {
+            setStatus(totalsError.message);
+            setLoading(false);
+            return;
+          }
+
+          const map: Record<string, number> = {};
+          (totalsData as TotalRow[] | null)?.forEach((row) => {
+            map[row.habit_id] = row.total_periods_done;
+          });
+
+          setTotalsByHabitId(map);
+        } else {
+          setTotalsByHabitId({});
+        }
+
+        setLoading(false);
+      } catch (e: any) {
+        if (cancelled) return;
+        setStatus(e?.message ?? "Something went wrong.");
+        setLoading(false);
       }
-
-      setLoading(false);
     }
 
     loadGrid();
 
     return () => {
-      isMounted = false;
+      cancelled = true;
     };
-  }, [router]);
+  }, [authLoading, router]);
 
   async function handleDidIt(habitId: string, cadence: "daily" | "weekly" | "monthly") {
     setStatus("");
@@ -178,22 +184,21 @@ export default function GridPage() {
     const period_date = getPeriodDate(cadence);
 
     const { error } = await supabase.from("habit_logs").insert({
-        habit_id: habitId,
-        period_date,
+      habit_id: habitId,
+      period_date,
     });
 
     if (error) {
-        const msg = (error as any).message ?? "";
+      const msg = (error as any).message ?? "";
 
-        if (msg.includes("duplicate key value violates unique constraint")) {
-            const when =
-            cadence === "daily" ? "today" : cadence === "weekly" ? "this week" : "this month";
-            setStatus(`You already logged it ${when}!`);
-            return;
-        }
-
-        setStatus(msg || "Something went wrong.");
+      if (msg.includes("duplicate key value violates unique constraint")) {
+        const when = cadence === "daily" ? "today" : cadence === "weekly" ? "this week" : "this month";
+        setStatus(`You already logged it ${when}!`);
         return;
+      }
+
+      setStatus(msg || "Something went wrong.");
+      return;
     }
 
     // Refresh totals just for the habits on screen
@@ -201,24 +206,24 @@ export default function GridPage() {
     if (habitIds.length === 0) return;
 
     const { data: totalsData, error: totalsError } = await supabase
-        .from("habit_totals")
-        .select("habit_id,total_periods_done")
-        .in("habit_id", habitIds);
+      .from("habit_totals")
+      .select("habit_id,total_periods_done")
+      .in("habit_id", habitIds);
 
     if (totalsError) {
-        setStatus(totalsError.message);
-        return;
+      setStatus(totalsError.message);
+      return;
     }
 
     const map: Record<string, number> = {};
     (totalsData ?? []).forEach((row: any) => {
-        map[row.habit_id] = row.total_periods_done;
+      map[row.habit_id] = row.total_periods_done;
     });
 
     setTotalsByHabitId(map);
   }
 
-   const sortedHabits = useMemo(() => {
+  const sortedHabits = useMemo(() => {
     const collator = new Intl.Collator(undefined, { sensitivity: "base" });
 
     const getName = (h: HabitRow) => (profileNames[h.user_id] ?? "").trim();
@@ -244,6 +249,16 @@ export default function GridPage() {
     });
   }, [habits, profileNames, userId]);
 
+  // ✅ Auth gate (safe: AFTER hooks)
+  if (authLoading) {
+    return (
+      <main style={{ padding: 24 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700 }}>Grid</h1>
+        <p style={{ marginTop: 8 }}>Checking session…</p>
+      </main>
+    );
+  }
+
   if (loading) {
     return (
       <main style={{ padding: 24 }}>
@@ -256,27 +271,26 @@ export default function GridPage() {
 
   return (
     <main style={{ padding: 24 }}>
-    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
         <div>
-            <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>The Shining Stars</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>The Shining Stars</h1>
         </div>
 
         <Link
-            href="/profile"
-            style={{
+          href="/profile"
+          style={{
             border: "1px solid #ddd",
             padding: "10px 12px",
             borderRadius: 10,
             textDecoration: "none",
             color: "inherit",
             fontWeight: 600,
-            marginTop: 0, // aligns top with the h1
-            }}
+            marginTop: 0,
+          }}
         >
-            Profile
+          Profile
         </Link>
-    </div>
-
+      </div>
 
       {status && <p style={{ marginTop: 12 }}>{status}</p>}
 
@@ -292,9 +306,8 @@ export default function GridPage() {
         {sortedHabits.map((h) => {
           const name = profileNames[h.user_id] || "Someone";
           const total = totalsByHabitId[h.id] ?? 0;
-          const cadenceLabel =
-            h.cadence === "daily" ? "days" : h.cadence === "weekly" ? "weeks" : "months";
-            const cadenceDidIt = h.cadence === "daily" ? "today" : h.cadence === "weekly" ? "this week" : "this month";
+          const cadenceLabel = h.cadence === "daily" ? "days" : h.cadence === "weekly" ? "weeks" : "months";
+          const cadenceDidIt = h.cadence === "daily" ? "today" : h.cadence === "weekly" ? "this week" : "this month";
 
           return (
             <div
@@ -315,16 +328,14 @@ export default function GridPage() {
               </div>
 
               <div style={{ fontSize: 18 }}>
-                <span style={{ opacity: 0.8 }}>
-                  Total {cadenceLabel}:{" "}
-                </span>
+                <span style={{ opacity: 0.8 }}>Total {cadenceLabel}: </span>
                 <strong>{total}</strong>
               </div>
 
               {userId === h.user_id && (
                 <button
-                    onClick={() => handleDidIt(h.id, h.cadence)}
-                    style={{
+                  onClick={() => handleDidIt(h.id, h.cadence)}
+                  style={{
                     marginTop: 12,
                     padding: "8px 12px",
                     borderRadius: 10,
@@ -332,31 +343,30 @@ export default function GridPage() {
                     background: "transparent",
                     fontWeight: 700,
                     cursor: "pointer",
-                    }}
+                  }}
                 >
-                    I did it {cadenceDidIt}! 🥳
+                  I did it {cadenceDidIt}! 🥳
                 </button>
-            )}
+              )}
 
-            <div
+              <div
                 style={{
-                    marginTop: 10,
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 6,
-                    lineHeight: 1,
+                  marginTop: 10,
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 6,
+                  lineHeight: 1,
                 }}
-                >
+              >
                 {Array.from({ length: total }).map((_, i) => (
-                    <span key={i} style={{ fontSize: 20 }}>
+                  <span key={i} style={{ fontSize: 20 }}>
                     {h.progress_emoji}
-                    </span>
+                  </span>
                 ))}
-            </div>
+              </div>
             </div>
           );
         })}
-
       </div>
     </main>
   );
