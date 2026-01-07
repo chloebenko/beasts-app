@@ -22,10 +22,10 @@ export default function OnboardingPage() {
   const [userId, setUserId] = useState<string | null>(null);
 
   // redirect user to home page if not signed in
-    const { loading: loading_auth } = useRequireAuth();
-    if (loading_auth) {
-      return <div />; // or spinner
-    }
+  const { loading: loading_auth } = useRequireAuth();
+  if (loading_auth) {
+    return <div />; // or spinner
+  }
 
   useEffect(() => {
   let isMounted = true;
